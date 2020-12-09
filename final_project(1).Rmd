@@ -1,0 +1,161 @@
+---
+title: "Final_Project"
+author: "Yuxiang Chen, Yuxin Liu, Wenshu Liao, Jinhui Li"
+date: "08/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+#process dataset
+library("tidyverse") 
+library("car") 
+library("rpart") 
+library("rpart.plot") 
+library("nnet") 
+library("randomForest") 
+library("effects")
+
+setwd("C:\\Users\\cyx\\Downloads\\archive")
+#read files
+data1 = read.csv(file = "fundamentals.csv",header=TRUE, sep = ",")
+data2 = read.csv(file = "prices-split-adjusted.csv",header=TRUE, sep = ",")
+data3 = read.csv(file = "prices.csv",header=TRUE, sep = ",")
+data4 = read.csv(file = "securities.csv",header=TRUE, sep = ",")
+#we only use "fundamentals.csv"
+
+data1$Ticker.Symbol = as.factor(data1$Ticker.Symbol)
+
+#filter data
+new_data <- filter(new_data,!is.na(For.Year))
+new_data <- filter(new_data,!is.na(Earnings.Per.Share))
+new_data <- filter(new_data,!is.na(Estimated.Shares.Outstanding))
+new_data <- filter(new_data,Accounts.Receivable!=0)
+new_data <- filter(new_data,!is.na(Accounts.Receivable))
+new_data = na.omit(new_data)
+```
+
+```{r}
+#create a new dataset
+new_var = cbind(new_data$Ticker.Symbol,new_data$Accounts.Receivable,new_data$Accounts.Payable,new_data$Cash.Ratio,new_data$Current.Ratio,new_data$Net.Borrowings,
+                new_data$Add.l.income.expense.items,new_data$Net.Cash.Flow.Operating,new_data$Net.Cash.Flows.Financing,new_data$Cost.of.Revenue,
+                new_data$Net.Income,new_data$Net.Income.Adjustments,new_data$Operating.Income,new_data$Net.Income.Cont..Operations,
+                new_data$Net.Receivables,new_data$Operating.Margin, new_data$Profit.Margin,new_data$Quick.Ratio,new_data$Gross.Margin,new_data$Effect.of.Exchange.Rate)
+new_names=c( "Ticker.Symbol", "Accounts.Receivable","Accounts.Payable" , "Cash.Ratio" , "Current.Ratio" 
+           , "Net.Borrowings" , "Add.l.income.expense.items" , "Net.Cash.Flow.Operating" , 
+           "Net.Cash.Flows.Financing" , "Cost.of.Revenue" , "Net.Income" ,
+              "Net.Income.Adjustments", "Operating.Income" ,
+           "Net.Income.Cont..Operations" , "Net.Receivables" ,
+           "Operating.Margin", "Profit.Margin" , 
+             "Quick.Ratio" , "Gross.Margin" , "Effect.of.Exchange.Rate")
+colnames(new_var) = new_names
+new_var = as.data.frame((new_var))
+new_var = na.omit(new_var)
+new_var
+```
+
+```{r}
+add = cbind("ALK", -7452000000, 7757085000, 66, 45, -11111111, -2823000000, 1030000000, -325000000, 11120000000, 508000000, 6090077000, 848000000, 605000000, 632705000, 10, 10, 300,  50,-1000)
+
+add = matrix(add, nrow = 1)
+colnames(add) = colnames(new_var)
+add = as.data.frame(add)
+add[,2:20] = sapply(add[,2:20], as.numeric)
+rbind(new_var, add)
+new_var = rbind(new_var, add)
+str(add)
+```
+
+```{r}
+new_var = transform(new_var, Ticker.Symbol = as.numeric(Ticker.Symbol), Accounts.Receivable = as.numeric(Accounts.Receivable), Accounts.Payable = as.numeric(Accounts.Payable), Cash.Ratio = as.numeric(Cash.Ratio), Current.Ratio = as.numeric(Current.Ratio), Net.Borrowings = as.numeric(Net.Borrowings), Add.l.income.expense.items = as.numeric(Add.l.income.expense.items), Net.Cash.Flow.Operating = as.numeric(Net.Cash.Flow.Operating), Net.Cash.Flows.Financing = as.numeric(Net.Cash.Flows.Financing), Cost.of.Revenue = as.numeric(Cost.of.Revenue), Net.Income = as.numeric(Net.Income), Net.Income.Adjustments = as.numeric(Net.Income.Adjustments), Operating.Income = as.numeric(Operating.Income), Net.Income.Cont..Operations = as.numeric(Net.Income.Cont..Operations), Net.Receivables = as.numeric(Net.Receivables), Operating.Margin = as.numeric(Operating.Margin), Profit.Margin = as.numeric(Profit.Margin), Quick.Ratio = as.numeric(Quick.Ratio), Gross.Margin = as.numeric(Gross.Margin), Effect.of.Exchange.Rate = as.numeric(Effect.of.Exchange.Rate))
+str(new_var)
+```
+
+```{r}
+#use linear regression
+model1.linear = lm( Accounts.Receivable ~ ., data = new_var)
+summary(model1.linear)
+plot(model1.linear)
+```
+
+
+```{r}
+#use decision tree
+model.rpart <- rpart(Accounts.Receivable ~ ., data = new_var, cp = 0.01, model = TRUE)
+plotcp(model3.rpart)
+printcp(model3.rpart) 
+rpart.plot(model3.rpart, type = 0, fallen.leaves = TRUE, uniform = TRUE, yes.text = "TRUE", no.text = "FALSE", cex = .8)
+```
+
+```{r}
+#use random forest
+#model4.RF<-randomForest(Accounts.Receivable ~ ., data = new_var, mtry=sqrt(19), importance = TRUE)
+model.RF<-randomForest(Accounts.Receivable ~ Accounts.Payable + Cash.Ratio + Current.Ratio 
+                        + Net.Borrowings  + Net.Cash.Flow.Operating + 
+                          Net.Cash.Flows.Financing  + Net.Income + 
+                          Net.Income.Adjustments  + 
+                          Net.Income.Cont..Operations + Net.Receivables  + Profit.Margin +
+                          Quick.Ratio + Gross.Margin + Effect.of.Exchange.Rate + Operating.Income + Add.l.income.expense.items +For.Year + Cost.of.Revenue, data = new_data,mtry=sqrt(19), importance = TRUE)
+model4.RF
+importance(model4.RF,type = 2) 
+varImpPlot(model4.RF,type = 2, main = "Importance Plot")
+```
+
+```{r}
+#Partial Dependency Plot for Random Forest 
+partialPlot(model.RF, pred.data = new_data, x.var = Net.Receivables, sub = "Validation Set", which.class = "1")
+partialPlot(model.RF, pred.data = new_data, x.var = Net.Income.Adjustments, sub = "Validation Set", which.class = "1")
+partialPlot(model.RF, pred.data = new_data, x.var = Net.Cash.Flow.Operating, sub = "Validation Set", which.class = "1")
+partialPlot(model.RF, pred.data = new_data, x.var = Accounts.Payable, sub = "Validation Set", which.class = "1")
+partialPlot(model.RF, pred.data = new_data, x.var = Cost.of.Revenue, sub = "Validation Set", which.class = "1")
+```
+
+```{r}
+#use stepwise regression
+model2.step = step(model1.linear)
+summary(model2.step)
+plot(model2.step)
+```
+
+
+```{r}
+model1.linear2 = lm( Accounts.Receivable ~ Accounts.Payable  + Add.l.income.expense.items + Net.Cash.Flow.Operating + Net.Cash.Flow.Operating:Net.Cash.Flows.Financing + 
+                       Net.Cash.Flows.Financing + Cost.of.Revenue + Net.Income + Net.Income:Net.Income.Cont..Operations + Net.Income.Adjustments:Net.Income.Cont..Operations +
+                       Net.Income.Adjustments + Net.Income:Net.Income.Adjustments +Operating.Income + Net.Cash.Flow.Operating:Net.Cash.Flows.Financing
+                        + Net.Receivables   +  Net.Income : Operating.Income 
+                         +Current.Ratio:Quick.Ratio + Operating.Margin:Profit.Margin - 1, data = new_var)
+summary(model1.linear2)
+```
+
+```{r}
+model2.step2 = step(model1.linear2)
+summary(model2.step2)
+```
+
+```{r}
+model1.linear3 = lm( Accounts.Receivable ~ Accounts.Payable + Cash.Ratio:Current.Ratio                   + Net.Borrowings + Add.l.income.expense.items + Net.Cash.Flow.Operating + Gross.Margin:Operating.Margin + Profit.Margin+ Net.Cash.Flows.Financing + Cost.of.Revenue + Net.Income + Net.Income:Net.Income.Cont..Operations +                     Net.Income.Adjustments + Operating.Income + Net.Cash.Flow.Operating:Net.Cash.Flows.Financing+ Net.Income:Net.Income.Adjustments +                     Net.Income.Cont..Operations + Net.Receivables  + Profit.Margin +  Net.Income:Operating.Income +                    Quick.Ratio:Cash.Ratio + Current.Ratio:Quick.Ratio + Gross.Margin + Operating.Margin:Profit.Margin, data = new_var)
+summary(model1.linear3)
+```
+
+```{r}
+#final model
+model.final = lm( Accounts.Receivable ~ Accounts.Payable  + Add.l.income.expense.items + Net.Cash.Flow.Operating + Net.Cash.Flow.Operating:Net.Cash.Flows.Financing +                        Net.Cash.Flows.Financing + Cost.of.Revenue + Net.Income + Net.Income:Net.Income.Cont..Operations + Net.Income.Adjustments:Net.Income.Cont..Operations +                       Net.Income.Adjustments + Net.Income:Net.Income.Adjustments +Operating.Income + Net.Cash.Flow.Operating:Net.Cash.Flows.Financing                        + Net.Receivables   +  Net.Income : Operating.Income                          +Current.Ratio:Quick.Ratio + Operating.Margin:Profit.Margin - 1, data = new_var)
+summary(model.final)
+plot(model.final)
+```
+
+
+```{r}
+#anova test of model.final and model1.linear3
+anova(model.final, model1.linear3)
+```
+
